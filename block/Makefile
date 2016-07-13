@@ -2,10 +2,6 @@ obj-m := block.o
 EXTRA_CFLAGS += -O3
 block-objs := block_main.o
 
-# Otherwise we were called directly from the command
-# line; invoke the kernel build system.
-#else
-
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
@@ -21,5 +17,3 @@ load:
 
 unload:
         rmmod block
-
-#endif
