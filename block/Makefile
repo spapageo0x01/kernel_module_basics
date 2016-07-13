@@ -1,19 +1,18 @@
-obj-m := block.o
+obj-m := block_test.o
 EXTRA_CFLAGS += -O3
-block-objs := block_main.o
 
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
 default:
-        $(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 clean:
-        rm -rf .block.* .tmp_versions *.ko *.o Module.symvers Module.markers modules.order *mod.c .block.o.cmd .block.mod.o.cmd block.ko.unsigned
+	rm -rf .block_test.* .tmp_versions *.ko *.o Module.symvers Module.markers modules.order *mod.c .block_test.o.cmd .block_test.mod.o.cmd block_test.ko.unsigned
 
 load:
-        echo 8 > /proc/sys/kernel/printk
-        insmod block.ko size=2048
+	echo 8 > /proc/sys/kernel/printk
+	insmod block_test.ko size=2048
 
 unload:
-        rmmod block
+	rmmod block_test

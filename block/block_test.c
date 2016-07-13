@@ -11,23 +11,21 @@ MODULE_AUTHOR("Spyros Papageorgiou");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL v2");
 
-
 static struct block_device_operations block_ops = {
     .owner = THIS_MODULE
 };
 
 static int make_request(struct request_queue *q, struct bio* bio) {
-
+	// TODO: Create the request queue and receive block commands
 }
 
-
-static int __init module_init(void) {
+static int __init block_init(void) {
     printk(KERN_INFO "[Block] Init\n");
     return 0;
 }
-module_init(module_init);
+module_init(block_init);
 
-static void __exit module_destroy(void) {
+static void __exit block_destroy(void) {
    printk(KERN_INFO "[Block] Destroy\n");
 }
-module_exit(module_destroy);
+module_exit(block_destroy);
