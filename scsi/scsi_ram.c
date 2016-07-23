@@ -52,7 +52,7 @@ static int throw_away_reads;
 module_param(throw_away_reads, int, 0644);
 MODULE_PARM_DESC(throw_away_reads, "Don't actually read data from the device");
 
-static int use_thread = 1;
+static int use_thread = 0;
 module_param(use_thread, int, 0644);
 MODULE_PARM_DESC(use_thread, "Use a separate thread to do data accesses");
 
@@ -501,7 +501,12 @@ static int scsi_ram_device_thread(void *data)
 
 		cmnd = container_of((struct scsi_pointer *)ram_cmnd,
 							struct scsi_cmnd, SCp);
-		scsi_ram_execute_command(cmnd);
+
+		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10) {
+			cmnd->scsi_done(cmnd);
+		} else {
+			scsi_ram_execute_command(cmnd);
+		}
 	}
 	__set_current_state(TASK_RUNNING);
 
@@ -526,7 +531,11 @@ static int scsi_ram_queuecommand(struct Scsi_Host *shost,
 		list_add_tail(&ram_cmnd->queue, &ram_device->commands);
 		spin_unlock_irqrestore(shost->host_lock, flags);
 	} else {
-		scsi_ram_execute_command(cmnd);
+		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10) {
+			cmnd->scsi_done(cmnd);
+		} else {
+			scsi_ram_execute_command(cmnd);
+		}
 	}
 
 	return 0;
