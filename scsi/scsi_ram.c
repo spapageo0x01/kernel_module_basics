@@ -52,7 +52,7 @@ static int throw_away_reads;
 module_param(throw_away_reads, int, 0644);
 MODULE_PARM_DESC(throw_away_reads, "Don't actually read data from the device");
 
-static int use_thread = 0;
+static int use_thread;
 module_param(use_thread, int, 0644);
 MODULE_PARM_DESC(use_thread, "Use a separate thread to do data accesses");
 
@@ -65,6 +65,7 @@ static void copy_buffer(struct scsi_cmnd *cmnd, char *buf, int len)
 
 	scsi_for_each_sg(cmnd, sg, scsi_sg_count(cmnd), i) {
 		int tocopy = sg->length;
+
 		if (tocopy > len)
 			tocopy = len;
 
@@ -112,6 +113,7 @@ static void scsi_ram_put_u32(unsigned char *addr, unsigned int data)
 static unsigned int scsi_ram_get_u16(unsigned char *addr)
 {
 	unsigned int data;
+
 	data = addr[0] << 8;
 	data |= addr[1];
 
@@ -121,6 +123,7 @@ static unsigned int scsi_ram_get_u16(unsigned char *addr)
 static unsigned int scsi_ram_get_u24(unsigned char *addr)
 {
 	unsigned int data;
+
 	data = addr[0] << 16;
 	data |= addr[1] << 8;
 	data |= addr[2];
@@ -131,6 +134,7 @@ static unsigned int scsi_ram_get_u24(unsigned char *addr)
 static unsigned int scsi_ram_get_u32(unsigned char *addr)
 {
 	unsigned int data;
+
 	data = addr[0] << 24;
 	data |= addr[1] << 16;
 	data |= addr[2] << 8;
@@ -176,6 +180,7 @@ static void scsi_ram_inquiry(struct scsi_cmnd *cmnd)
 static void scsi_ram_read_capacity(struct scsi_cmnd *cmnd)
 {
 	char buf[8];
+
 	scsi_ram_put_u32(buf, capacity - 1);
 	scsi_ram_put_u32(buf + 4, sector_size);
 	copy_buffer(cmnd, buf, sizeof(buf));
@@ -223,6 +228,7 @@ static int scsi_ram_alloc_data(void)
 
 	for (i = 0; i < pages; i++) {
 		struct page *page = alloc_page(GFP_KERNEL | __GFP_HIGHMEM);
+
 		scsi_ram_data_array[i] = page;
 
 		/* scsi_ram_free_data will be called on failure */
@@ -244,6 +250,7 @@ static void scsi_ram_free_data(void)
 
 	for (i = 0; i < pages; i++) {
 		struct page *page = scsi_ram_data_array[i];
+
 		if (!page)
 			break;
 		__free_page(page);
@@ -286,7 +293,9 @@ static void scsi_ram_read(struct scsi_cmnd *cmnd, unsigned int startB,
 	unsigned long start = startB * sector_size;
 	unsigned long len = lenB * sector_size;
 	struct scatterlist *sg;
-	unsigned i, from_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
+	unsigned int i;
+	unsigned int from_off = start % PAGE_SIZE;
+	unsigned int data_pfn = start / PAGE_SIZE;
 
 	if (startB > capacity || (startB + lenB) > capacity)
 		return scsi_ram_too_big(cmnd, startB, lenB);
@@ -298,6 +307,7 @@ static void scsi_ram_read(struct scsi_cmnd *cmnd, unsigned int startB,
 		struct page *sgpage = sg_page(sg);
 		unsigned int to_off = sg->offset;
 		unsigned int sg_copy = sg->length;
+
 		if (sg_copy > len)
 			sg_copy = len;
 		len -= sg_copy;
@@ -341,7 +351,9 @@ static void scsi_ram_write(struct scsi_cmnd *cmnd, unsigned int startB,
 	unsigned long start = startB * sector_size;
 	unsigned long len = lenB * sector_size;
 	struct scatterlist *sg;
-	unsigned i, to_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
+	unsigned int i;
+	unsigned int to_off = start % PAGE_SIZE;
+	unsigned int data_pfn = start / PAGE_SIZE;
 
 	if (startB > capacity || (startB + lenB) > capacity)
 		return scsi_ram_too_big(cmnd, startB, lenB);
@@ -353,6 +365,7 @@ static void scsi_ram_write(struct scsi_cmnd *cmnd, unsigned int startB,
 		struct page *sgpage = sg_page(sg);
 		unsigned int from_off = sg->offset;
 		unsigned int sg_copy = sg->length;
+
 		if (sg_copy > len)
 			sg_copy = len;
 		len -= sg_copy;
@@ -395,6 +408,7 @@ static void scsi_ram_read_6(struct scsi_cmnd *cmnd)
 {
 	unsigned int first_block = scsi_ram_get_u24(cmnd->cmnd + 1) & 0x1fffff;
 	unsigned int length = cmnd->cmnd[4];
+
 	if (!length)
 		length = 256;
 	scsi_ram_read(cmnd, first_block, length);
@@ -404,6 +418,7 @@ static void scsi_ram_read_10(struct scsi_cmnd *cmnd)
 {
 	unsigned int first_block = scsi_ram_get_u32(cmnd->cmnd + 2);
 	unsigned int length = scsi_ram_get_u16(cmnd->cmnd + 7);
+
 	scsi_ram_read(cmnd, first_block, length);
 }
 
@@ -411,6 +426,7 @@ static void scsi_ram_write_6(struct scsi_cmnd *cmnd)
 {
 	unsigned int first_block = scsi_ram_get_u24(cmnd->cmnd + 1) & 0x1fffff;
 	unsigned int length = cmnd->cmnd[4];
+
 	if (!length)
 		length = 256;
 	scsi_ram_write(cmnd, first_block, length);
@@ -420,6 +436,7 @@ static void scsi_ram_write_10(struct scsi_cmnd *cmnd)
 {
 	unsigned int first_block = scsi_ram_get_u32(cmnd->cmnd + 2);
 	unsigned int length = scsi_ram_get_u16(cmnd->cmnd + 7);
+
 	scsi_ram_write(cmnd, first_block, length);
 }
 
@@ -502,11 +519,10 @@ static int scsi_ram_device_thread(void *data)
 		cmnd = container_of((struct scsi_pointer *)ram_cmnd,
 							struct scsi_cmnd, SCp);
 
-		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10) {
+		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10)
 			cmnd->scsi_done(cmnd);
-		} else {
+		else
 			scsi_ram_execute_command(cmnd);
-		}
 	}
 	__set_current_state(TASK_RUNNING);
 
@@ -531,11 +547,10 @@ static int scsi_ram_queuecommand(struct Scsi_Host *shost,
 		list_add_tail(&ram_cmnd->queue, &ram_device->commands);
 		spin_unlock_irqrestore(shost->host_lock, flags);
 	} else {
-		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10) {
+		if (cmnd->cmnd[0] == READ_10 || cmnd->cmnd[0] == WRITE_10)
 			cmnd->scsi_done(cmnd);
-		} else {
+		else
 			scsi_ram_execute_command(cmnd);
-		}
 	}
 
 	return 0;
