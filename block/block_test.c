@@ -30,12 +30,12 @@ static const struct block_device_operations block_ops = {
 
 static void blk_drv_err(const char *msg)
 {
-	printk(KERN_ERR "[%s]%s\n", DRV_NAME, msg);
+	printk(KERN_ERR "[%s] %s\n", DRV_NAME, msg);
 }
 
 static void blk_drv_info(const char *msg)
 {
-	printk(KERN_INFO "[%s]%s\n", DRV_NAME, msg);
+	printk(KERN_INFO "[%s] %s\n", DRV_NAME, msg);
 }
 
 
