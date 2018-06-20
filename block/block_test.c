@@ -16,12 +16,11 @@ MODULE_LICENSE("GPL v2");
 #define DRV_NAME "blk test"
 #define ONE_GIG 2097152
 
-typedef struct block_dev {
+struct block_dev {
 	spinlock_t lock;
 	struct gendisk *gd;
 	struct request_queue *queue;
-} block_device_t;
-block_device_t *blk_dev;
+};
 
 static const struct block_device_operations block_ops = {
 	.owner = THIS_MODULE
@@ -53,11 +52,11 @@ static int __init block_init(void)
 	blk_drv_info("Initialization started");
 
 	//Allocate memory for device metadata
-	blk_dev = vmalloc(sizeof(block_device_t));
+	blk_dev = vmalloc(sizeof(struct block_device));
 	if (!blk_dev) {
 		do {
 			msleep(500);
-			blk_dev = vmalloc(sizeof(block_device_t));
+			blk_dev = vmalloc(sizeof(struct block_device));
 		} while (!blk_dev);
 	}
 
